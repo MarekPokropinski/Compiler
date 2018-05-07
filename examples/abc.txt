@@ -1,0 +1,13 @@
+{
+read x
+read p
+
+wyn=1
+
+while p>=1
+{
+   wyn=wyn*x
+   p=p-1
+}
+print wyn
+}
