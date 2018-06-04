@@ -27,7 +27,17 @@ const Symbol_s* parse_single_instruction(FILE*f,const Symbol_s* s,int type)
             parse_single_instruction(f,s+1,value);
             fprintf(f,"test %%eax, %%eax\njz _if_end_%d\n",ifCnt);
             s=parse_instruction_block(f,s+end+2);
-            fprintf(f,"_if_end_%d:\n",ifCnt++);
+            if(strcmp(s[1].text,"else")==0)
+            {
+                fprintf(f,"jmp _else_end_%d\n_if_end_%d:\n",ifCnt,ifCnt);
+                s=parse_instruction_block(f,s+3);
+                fprintf(f,"_else_end_%d:\n",ifCnt);
+            }
+            else
+            {
+                fprintf(f,"_if_end_%d:\n",ifCnt,ifCnt);
+            }
+            ifCnt++;
             return s;
         }
 		if(strcmp(s[start].text,"while")==0)
@@ -52,6 +62,27 @@ const Symbol_s* parse_single_instruction(FILE*f,const Symbol_s* s,int type)
             fprintf(f,"push %%eax\npush $scanf_format\ncall _scanf\nadd $8,%%esp\n");
             return s;
 		}
+		if(strcmp(s[start].text,"for")==0)
+        {
+            s = parse_single_instruction(f,s+1,value);
+            fprintf(f,"_for_start_%d:\n",whileCnt);
+			s = parse_single_instruction(f,s,value);
+            fprintf(f,"test %%eax, %%eax\njz _for_end_%d\njmp _for_iter_operation_end_%d\n_for_iter_operation_%d:\n",whileCnt,whileCnt,whileCnt);
+            s = parse_single_instruction(f,s,value);
+            fprintf(f,"jmp _for_start_%d\n_for_iter_operation_end_%d:\n",whileCnt,whileCnt);
+
+            end = 0;
+            while (s[end].symbol != Endline)
+            {
+                end++;
+            }
+            end--;
+
+            s=parse_instruction_block(f,s);
+            fprintf(f,"jmp _for_iter_operation_%d\n_for_end_%d:\n",whileCnt,whileCnt);
+			whileCnt++;
+            return s;
+        }
     }
 	AST*tree = generateSyntaxTree(s, start, end);
 	if (tree)
@@ -249,13 +280,13 @@ int variableOut(char** vars, FILE*f)
 	}
 	fprintf(f, ".data \n");
 	while (*vars)
-	{		
+	{
 		fprintf(f, "%s: .long 0\n", *vars);
 		vars++;
 	}
 	fprintf(f, "format: .string \"%%d\\n\"\n");
 	fprintf(f, "scanf_format: .string \"%%d\"\n");
-	
+
 	return 1;
 }
 
@@ -278,18 +309,18 @@ void Compile(const char * input, const char * output)
 		program[bytes_read] = 0;
 	}
 
-	printf("Program:\n%s\n", program);
+	//printf("Program:\n%s\n", program);
 
 
 	char** vars;
 	const Symbol_s* s = pass1(program, &vars);
 
 	const Symbol_s* s2 = s;
-	while (s2->symbol != Eof)
+	/*while (s2->symbol != Eof)
 	{
 		printf("%d: %s\n", s2->symbol, s2->text);
 		s2++;
-	}
+	}*/
 
 	variableOut(vars, out);
 	fprintf(out, ".global _main\n.text\n_main:\n");
@@ -330,7 +361,7 @@ Symbol_s* pass1(char* code,/*OUT*/char***vars)
 
 	while (code = readline(code, line))
 	{
-		printf("Parse line 1\n");
+		//printf("Parse line 1\n");
 		char* s = line;
 		int len = 0;
 		while (*s != '\0')
@@ -408,6 +439,13 @@ Symbol_s* pass1(char* code,/*OUT*/char***vars)
 				buf[1] = '\0';
 				s++;
 			}
+			else if(s[0]==';')
+            {
+                symbols[n].symbol = Endline;
+                buf[0]=';';
+                buf[1]='\0';
+                s++;
+            }
 			else
 			{
 				s++;
