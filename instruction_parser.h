@@ -19,4 +19,4 @@ Symbol_s* pass1(char* code, char***vars);
 
 void Compile(const char * input, const char * output);
 
-static const char* compiler_names[]={"while","if","print","read","format","for",NULL};
+static const char* compiler_names[]={"while","if","print","read","format","for","else",NULL};
